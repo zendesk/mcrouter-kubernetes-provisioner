@@ -1,24 +1,62 @@
+---
 kind: Deployment
 apiVersion: extensions/v1beta1
 metadata:
   name: mcrouter-provisioner
   labels:
-    name: mcrouter-provisioner-deployment
+    project: mcrouter-memcached
+    role: mcrouter-provisioner
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      project: mcrouter-memcached
+      role: mcrouter-provisioner
   template:
     metadata:
       labels:
-        app: mcrouter-provisioner
+        project: mcrouter-memcached
+        role: mcrouter-provisioner
     spec:
       volumes:
         - name: mcrouter-provisioner-storage
           emptyDir: {}
       containers:
       - name: mcrouter-provisioner
+        env:
+        - name: CLUSTER_ROLE
+          value: "provisioner"
         image: mlaccetti/mcrouter-kubernetes-provisioner:master
         imagePullPolicy: Always
         volumeMounts:
         - mountPath: "/mcrouter"
           name: mcrouter-provisioner-storage
           readOnly: false
+      - name: mcrouter
+        image: jamescarr/mcrouter:1.0.1
+        command: ["/bin/bash","-c"]
+        args: ["sleep 60 && mcrouter -p 5000 -f /mcrouter/mcrouter-config.json"]
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5000
+        volumeMounts:
+        - mountPath: "/mcrouter"
+          name: mcrouter-provisioner-storage
+          readOnly: true
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: mcrouter-service
+  labels:
+    project: mcrouter-memcached
+    role: mcrouter-provisioner
+spec:
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+  selector:
+    project: mcrouter-memcached
+    role: mcrouter-provisioner

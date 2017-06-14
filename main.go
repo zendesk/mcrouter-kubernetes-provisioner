@@ -19,14 +19,16 @@ import (
 	"k8s.io/client-go/1.5/rest"
 	"k8s.io/client-go/1.5/tools/cache"
 	"k8s.io/client-go/1.5/tools/clientcmd"
+	"unicode/utf8"
 )
 
-var log = logger.New(os.Stdout, "[mkp]", logger.Ldate | logger.Ltime | logger.Lmicroseconds | logger.Llongfile)
+var log = logger.New(os.Stdout, "[mkp]", logger.Ldate|logger.Ltime|logger.Lmicroseconds|logger.Llongfile)
 
 var clientset *kubernetes.Clientset = nil
 var namespace *string = nil
 var mcrouterConfig *string = nil
 var inputTemplate *string = nil
+var podips bool = true
 
 func getMemcachedPods() (map[string]string, error) {
 	log.Println("Getting memcached pods from kubernetes.")
@@ -38,14 +40,34 @@ func getMemcachedPods() (map[string]string, error) {
 		return nil, err
 	}
 
+	// a race exists here.  check to make sure that all the pods
+	// actually have an ip.  if they don't, pull the list again and check
 	pods, err := clientset.Core().Pods(*namespace).List(api.ListOptions{LabelSelector: kubeLabelSelector})
 	if err != nil {
 		log.Fatal("Could not get memcached pods from kubernetes.", err)
 		return nil, err
 	}
+	for {
+		pods, err = clientset.Core().Pods(*namespace).List(api.ListOptions{LabelSelector: kubeLabelSelector})
+		podips = true
+		for _, pod := range pods.Items {
+			log.Println("DEBUG: ip of pod is ", pod.Status.PodIP)
+			if utf8.RuneCountInString(pod.Status.PodIP) < 5 {
+				log.Println("DEBUG: MISSING POD IP!!!")
+				podips = false
+				break
+			}
+		}
+		if podips == true {
+			break
+		}
+		time.Sleep(3 * time.Second)
+	}
 
 	memcachedPods := make(map[string]string)
+
 	for _, pod := range pods.Items {
+		log.Println("DEBUG: found pod ", pod.Name, "with ip ", pod.Status.PodIP)
 		memcachedPods[pod.Name] = pod.Status.PodIP
 	}
 
@@ -53,7 +75,7 @@ func getMemcachedPods() (map[string]string, error) {
 	return memcachedPods, nil
 }
 
-func updateConfigFile(pods map[string]string) (error) {
+func updateConfigFile(pods map[string]string) error {
 	log.Println("Updating config file.")
 
 	err := lib.Parse(*inputTemplate, *mcrouterConfig, pods)

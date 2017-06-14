@@ -2,7 +2,7 @@
   "pools": {
     "default": {
       "servers": [ {{if .servers}}
-        {{ range $key, $value := .servers }}"{{$value}}:5000",{{end}}
+        {{ range $key, $value := .servers }}"{{$value}}:11211",{{end}}
     {{end}}]
     }
   },

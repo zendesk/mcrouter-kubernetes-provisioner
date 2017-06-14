@@ -1,5 +1,5 @@
 {
-    "memo": "2594199260df964c76c1be0288b6e760fa078dbb4d845a7c60c0bfc61a3d7c27",
+    "memo": "b181ac10a77c41780458f46595272c6ee5c10948bbd88ef763853a8c9505c8fb",
     "projects": [
         {
             "name": "cloud.google.com/go",
@@ -204,6 +204,14 @@
                 "buffer",
                 "jlexer",
                 "jwriter"
+            ]
+        },
+        {
+            "name": "github.com/mlaccetti/mcrouter-kubernetes-provisioner",
+            "branch": "master",
+            "revision": "c67e4cb731b4417f6af6416946e4d2639887adf3",
+            "packages": [
+                "lib"
             ]
         },
         {
